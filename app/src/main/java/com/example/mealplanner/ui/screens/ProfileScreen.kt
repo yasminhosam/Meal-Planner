@@ -117,6 +117,7 @@ fun ProfileScreen(navController: NavController,modifier: Modifier=Modifier){
         ) {
             Text(
                 text = "Logout",
+                fontSize = 21.sp
             )
         }
     }

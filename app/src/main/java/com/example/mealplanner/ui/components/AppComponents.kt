@@ -1,5 +1,7 @@
 package com.example.mealplanner.ui.components
 
+import android.graphics.drawable.Icon
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -23,12 +25,21 @@ import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -51,10 +62,92 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.mealplanner.R
+import com.example.mealplanner.navigation.NavigationItem
+
+
+@Composable
+fun CustomTextField(
+    value:String,
+    onValueChange:(String)->Unit,
+    leadinIcon: @Composable (()->Unit),
+    label:String,
+    isPassword:Boolean=false
+){
+    var passwordVisible by remember { mutableStateOf(false) }
+    OutlinedTextField(value = value, onValueChange = onValueChange,
+        leadingIcon = leadinIcon,
+        label = { Text(label, color = Color(0xFFFF9800)) },
+        modifier = Modifier.fillMaxWidth(),
+        visualTransformation =
+            if(isPassword && !passwordVisible)
+                PasswordVisualTransformation()
+            else
+                VisualTransformation.None
+          ,
+        trailingIcon = {
+            if (isPassword){
+                val icon =if(passwordVisible)  Icons.Default.Visibility
+                else Icons.Default.VisibilityOff
+
+
+                IconButton(onClick = {passwordVisible=!passwordVisible}) {
+                    Icon(imageVector = icon, contentDescription ="Toggle password visibility" )
+                }
+            }
+        },
+        shape = RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Color(0xFFFF9800),
+            unfocusedBorderColor = Color(0xFFFFB74D),
+            cursorColor = Color(0xFFFF9800)
+        )
+    )
+}
+
+
+@Composable
+fun CustomButton(
+    text: String,
+    onClick: () -> Unit
+){
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(Color(0xFFFF6F00)),
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(55.dp)
+    ) {
+        Text(text, color = Color.White, fontSize = 18.sp)
+    }
+}
+
+
+
+@Composable
+fun SocialButton(icon: Int) {
+    Surface(
+        shape = CircleShape,
+        //shadowElevation = 2.dp,
+        color = Color.Transparent
+    ) {
+        Image(
+            painter = painterResource(icon),
+            contentDescription = null,
+
+            modifier = Modifier
+                .padding(12.dp)
+                .size(24.dp)
+        )
+    }
+}
 
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -145,7 +238,7 @@ fun MealCategories() {
 }
 
 @Composable
-fun RecipesSection() {
+fun RecipesSection(navController: NavController) {
     val recipes = listOf("pasta", "meat", "salad", "chicken", "soup", "pie", "cookies", "potato")
     LazyColumn(
         modifier = Modifier
@@ -153,15 +246,16 @@ fun RecipesSection() {
     ) {
         items(recipes.size) { index ->
             val currentRecipe = recipes[index]
-            RecipeCard(currentRecipe)
+            RecipeCard(currentRecipe,navController)
 
         }
     }
 }
 
 @Composable
-fun RecipeCard(recipeName: String = " Rcipce") {
+fun RecipeCard(recipeName: String = " Rcipce",navController: NavController) {
     Card(
+        onClick = {navController.navigate(NavigationItem.RecipeDetails.route)},
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -190,12 +284,12 @@ fun RecipeCard(recipeName: String = " Rcipce") {
                     .fillMaxSize()
                     .padding(11.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.FavoriteBorder,
-                    contentDescription = "Favorite",
-                    tint = Color.White,
-                    modifier = Modifier.align(Alignment.TopEnd)
-                )
+                var isFav by rememberSaveable { mutableStateOf(false) }
+                FavoriteButton(
+                    isFav, onFavoriteClick = {isFav=it},
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp))
                 Text(
                     text = recipeName,
                     color = Color.White,
@@ -220,7 +314,7 @@ fun ProfileRow(
         onClick=onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding( 6.dp),
+            .padding(6.dp),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(2.dp),
         colors = CardDefaults.cardColors(Color.White)
@@ -245,7 +339,7 @@ fun ProfileSwitchRow(
     var checked by rememberSaveable { mutableStateOf(false) }
     Card(modifier = Modifier
         .fillMaxWidth()
-        .padding( 6.dp),
+        .padding(6.dp),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(2.dp),
         colors = CardDefaults.cardColors(Color.White)
@@ -267,10 +361,33 @@ fun ProfileSwitchRow(
     }
 }
 
-
+@Composable
+fun FavoriteButton(
+    isFavorite:Boolean,
+    onFavoriteClick:(Boolean)->Unit,
+    modifier: Modifier=Modifier,
+    backgroundEnabled:Boolean=false
+){
+    val bgColor by animateColorAsState(
+        targetValue = if (isFavorite && backgroundEnabled) Color(0xFFFFEBEE) else Color.Transparent,
+        label = ""
+    )
+    IconButton(
+        onClick = {onFavoriteClick(!isFavorite)},
+        modifier=modifier
+            .background(bgColor,CircleShape)
+        ) {
+        Icon(
+            imageVector =  if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+            contentDescription = "Favorite",
+            tint = if(isFavorite) Color.Red else Color.Gray,
+            modifier = modifier
+        )
+    }
+}
 @Preview(showBackground = true)
 @Composable
 fun Preview() {
-    RecipeCard()
+   // RecipeCard()
 
 }

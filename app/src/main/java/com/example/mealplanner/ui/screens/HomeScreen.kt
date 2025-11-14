@@ -84,12 +84,7 @@ fun HomeScreen(navController: NavController) {
                 Text("What are you cooking today?", color = Color.Gray)
             }
             Spacer(modifier = Modifier.weight(1f))
-            Icon(
-                imageVector = Icons.Filled.Notifications,
-                contentDescription = "Notification",
-                modifier = Modifier.size(23.dp),
-                Color.Black
-            )
+
 
         }
         SimpleSearchBar(
@@ -108,7 +103,7 @@ fun HomeScreen(navController: NavController) {
         )
         MealCategories()
         Spacer(modifier = Modifier.height(10.dp))
-        RecipesSection()
+        RecipesSection(navController)
 
     }
 }
