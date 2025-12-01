@@ -3,16 +3,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import com.example.mealplanner.navigation.NavigationItem
 import com.example.mealplanner.ui.screens.HomeScreen
 import com.example.mealplanner.ui.screens.ProfileScreen
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
+import androidx.navigation.navArgument
 import com.example.mealplanner.ui.screens.FavoriteScreen
 import com.example.mealplanner.ui.screens.LogInScreen
 import com.example.mealplanner.ui.screens.PlanScreen
-import com.example.mealplanner.ui.screens.RecipeDetailsScreen
+import com.example.mealplanner.ui.screens.MealDetailsScreen
 import com.example.mealplanner.ui.screens.SearchScreen
 import com.example.mealplanner.ui.screens.SignUpScreen
 
@@ -23,7 +25,7 @@ fun NavGraph(
 ){
     NavHost(
         navController = navController,
-        startDestination = "auth_graph",
+        startDestination = "main_graph",
         modifier = modifier
     ){
 
@@ -47,7 +49,13 @@ fun NavGraph(
                 ProfileScreen(navController)
             }
             composable(NavigationItem.Search.route) { SearchScreen()  }
-            composable(NavigationItem.RecipeDetails.route){ RecipeDetailsScreen(navController) }
+            composable(
+                NavigationItem.RecipeDetails.route,
+                arguments = listOf(
+                    navArgument("id"){type=NavType.StringType}
+                )
+                ){
+                MealDetailsScreen(navController) }
 
             composable(NavigationItem.Favorite.route) { FavoriteScreen()  }
             composable(NavigationItem.Plan.route) { PlanScreen()  }

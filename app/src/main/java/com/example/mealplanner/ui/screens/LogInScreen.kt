@@ -1,5 +1,6 @@
 package com.example.mealplanner.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,33 +18,64 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.mealplanner.R
 import com.example.mealplanner.navigation.NavigationItem
 import com.example.mealplanner.ui.components.CustomButton
 import com.example.mealplanner.ui.components.CustomTextField
 import com.example.mealplanner.ui.components.SocialButton
+import com.example.mealplanner.ui.viewmodel.AuthState
+import com.example.mealplanner.ui.viewmodel.AuthViewModel
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 
 @Composable
-fun LogInScreen(navController: NavController) {
-    val password = remember { mutableStateOf("") }
-    val email = remember { mutableStateOf("") }
+fun LogInScreen(
+    navController: NavController,
+    viewModel: AuthViewModel= hiltViewModel()
+    ) {
+//    var password by remember { mutableStateOf("") }
+//    var email by remember { mutableStateOf("") }
 
+    val context= LocalContext.current
+    val state=viewModel.loginState
+    LaunchedEffect(key1 =state ) {
+        when(state){
+            is AuthState.Success ->{
+                Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
+                navController.navigate(NavigationItem.Home.route){
+                    popUpTo("auth_graph"){inclusive=true}
+                }
+            }
+            is AuthState.Error ->{
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+            }
+            else ->{}
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -66,15 +98,15 @@ fun LogInScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(2.dp))
 
         CustomTextField(
-            value = email.value,
-            onValueChange = { email.value = it },
+            value = viewModel.loginEmail,
+            onValueChange = { viewModel.loginEmail = it },
             leadinIcon = { Icon(Icons.Default.Email, contentDescription = "email") },
             label = "eamil"
         )
         Spacer(modifier = Modifier.height(11.dp))
         CustomTextField(
-            value = password.value,
-            onValueChange = { password.value = it },
+            value = viewModel.loginPassword,
+            onValueChange = { viewModel.loginPassword = it },
             leadinIcon = { Icon(Icons.Default.Lock, contentDescription = "password") },
             label = "password",
             isPassword = true
@@ -88,21 +120,15 @@ fun LogInScreen(navController: NavController) {
             fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.height(24.dp))
-        CustomButton("Login", onClick = {
-            // once logged in:
-            navController.navigate(NavigationItem.Home.route) {
-                //popUpTo("auth_graph") { inclusive = true }
-            }
-        })
-//        Button(onClick = {
-//            println("!!! DEBUG: LOGIN BUTTON CLICKED !!!") // Add this log
-//            // once logged in:
-//            navController.navigate(NavigationItem.Home.route) {
-//                popUpTo("auth_graph") { inclusive = true }
-//            }
-//        }) {
-//            Text("Login")
-//        }
+        if(state is AuthState.Loading){
+            CircularProgressIndicator()
+        }else {
+            CustomButton("Login", onClick = {
+                viewModel.onLoginClick()
+
+            })
+        }
+//
         Spacer(modifier = Modifier.height(24.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -119,8 +145,8 @@ fun LogInScreen(navController: NavController) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            SocialButton(R.drawable.facebook)
-            SocialButton(R.drawable.google)
+            SocialButton(R.drawable.facebook, onClick = {})
+            SocialButton(R.drawable.google, onClick = {})
 
         }
         Spacer(modifier = Modifier.height(24.dp))

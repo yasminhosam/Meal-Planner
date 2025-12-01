@@ -15,11 +15,13 @@ import androidx.navigation.compose.rememberNavController
 import com.example.mealplanner.navigation.NavGraph
 import com.example.mealplanner.navigation.NavigationItem
 import com.example.mealplanner.ui.components.BottomNavBar
-import com.example.mealplanner.ui.screens.RecipeDetailsScreen
-import com.example.mealplanner.ui.screens.SignUpScreen
+
 
 import com.example.mealplanner.ui.theme.MealPlannerTheme
+import dagger.hilt.EntryPoint
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

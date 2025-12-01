@@ -1,6 +1,5 @@
 package com.example.mealplanner.ui.components
 
-import android.graphics.drawable.Icon
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -11,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,13 +22,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -38,6 +38,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SearchBar
@@ -57,18 +58,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.mealplanner.R
+import coil.compose.AsyncImage
+import com.example.mealplanner.domain.entity.CategoryResponse
+import com.example.mealplanner.domain.entity.Meal
+import com.example.mealplanner.domain.entity.MealResponse
 import com.example.mealplanner.navigation.NavigationItem
 
 
@@ -132,11 +137,15 @@ fun CustomButton(
 
 
 @Composable
-fun SocialButton(icon: Int) {
+fun SocialButton(
+    icon: Int,
+    onClick: () -> Unit
+) {
     Surface(
         shape = CircleShape,
         //shadowElevation = 2.dp,
-        color = Color.Transparent
+        color = Color.Transparent,
+        onClick = onClick
     ) {
         Image(
             painter = painterResource(icon),
@@ -157,6 +166,9 @@ fun SimpleSearchBar(
     onQueryChange:(String)->Unit,
     active:Boolean,
     onActiveChange:(Boolean) -> Unit,
+    onSearch:()->Unit,
+    searchResult: MealResponse?,
+    navController: NavController,
     modifier: Modifier = Modifier
 ) {
 
@@ -166,7 +178,7 @@ fun SimpleSearchBar(
         query = query,
         onQueryChange =onQueryChange,
         onSearch = {
-            onActiveChange(false)
+            onSearch()
         },
         active = active,
         onActiveChange = onActiveChange,
@@ -193,24 +205,31 @@ fun SimpleSearchBar(
         },
 
         content = {
-            if (query.isEmpty()) {
-                Text("Type something to search your recipes")
+            if (!searchResult?.meals.isNullOrEmpty()) {
+                RecipesSection( navController,searchResult!!)
+            } else if (query.isEmpty()) {
+                Text("Type something to search your recipes", modifier = Modifier.padding(16.dp), color = Color.Gray)
+            }else{
+                Text(
+                    text = "No meals found",
+                    modifier = Modifier.padding(16.dp)
+                )
+
             }
+
         }
     )
 }
 
 @Composable
-fun MealCategories() {
-    val categories = listOf("Breakfast", "Lunch", "Dinner", "Snacks","Diet","Dairy","sweets")
-
+fun MealCategories(response:CategoryResponse) {
     LazyRow(
         modifier = Modifier
-            .padding(8.dp)
+            .padding(4.dp)
             .fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(categories.size) { index ->
+        items(response.categories) { category ->
             Surface(
                 modifier = Modifier,
                 shape = CircleShape,
@@ -218,18 +237,16 @@ fun MealCategories() {
                 ) {
                 Column(
                     modifier = Modifier
-                        .padding(8.dp),
+                        .padding(4.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-
-                    Image(
-                        painter = painterResource(R.drawable.user),
-                        contentDescription = "categories icons",
-                        modifier = Modifier.size(40.dp)
+                    AsyncImage(
+                        model = category.strCategoryThumb ,
+                        contentDescription = category.strCategoryDescription,
+                        modifier = Modifier.size(70.dp)
                     )
-                     Spacer(modifier = Modifier.padding(6.dp))
-                    Text(categories[index])
+                    Text(category.strCategory)
                 }
             }
 
@@ -238,24 +255,29 @@ fun MealCategories() {
 }
 
 @Composable
-fun RecipesSection(navController: NavController) {
-    val recipes = listOf("pasta", "meat", "salad", "chicken", "soup", "pie", "cookies", "potato")
+fun RecipesSection(
+    navController: NavController,
+    response:MealResponse
+) {
+
     LazyColumn(
         modifier = Modifier
             .padding(8.dp), verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        items(recipes.size) { index ->
-            val currentRecipe = recipes[index]
-            RecipeCard(currentRecipe,navController)
+        items(response.meals) { meal ->
+            RecipeCard(meal, navController =navController )
+
+
+            }
 
         }
     }
-}
+
 
 @Composable
-fun RecipeCard(recipeName: String = " Rcipce",navController: NavController) {
+fun RecipeCard(meal:Meal,navController: NavController) {
     Card(
-        onClick = {navController.navigate(NavigationItem.RecipeDetails.route)},
+        onClick = {navController.navigate(NavigationItem.RecipeDetails.createRoute(meal.idMeal))},
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -263,10 +285,11 @@ fun RecipeCard(recipeName: String = " Rcipce",navController: NavController) {
 
     ) {
         Box() {
-            Image(
-                painter = painterResource(R.drawable.cooking),
-                contentDescription = "meal image",
-                modifier = Modifier.fillMaxSize()
+            AsyncImage(
+                model = meal.strMealThumb,
+                contentDescription = meal.strMeal,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
             // 2. Gradient Scrim for readability of text
             Box(
@@ -286,12 +309,13 @@ fun RecipeCard(recipeName: String = " Rcipce",navController: NavController) {
             ) {
                 var isFav by rememberSaveable { mutableStateOf(false) }
                 FavoriteButton(
-                    isFav, onFavoriteClick = {isFav=it},
+                    isFav,
+                    onFavoriteClick = {isFav=it},
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp))
                 Text(
-                    text = recipeName,
+                    text = meal.strMeal,
                     color = Color.White,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
@@ -363,28 +387,33 @@ fun ProfileSwitchRow(
 
 @Composable
 fun FavoriteButton(
-    isFavorite:Boolean,
-    onFavoriteClick:(Boolean)->Unit,
-    modifier: Modifier=Modifier,
-    backgroundEnabled:Boolean=false
-){
+    isFavorite: Boolean,
+    onFavoriteClick: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Smooth animated background
     val bgColor by animateColorAsState(
-        targetValue = if (isFavorite && backgroundEnabled) Color(0xFFFFEBEE) else Color.Transparent,
+        if (isFavorite) Color.White.copy(alpha = 0.85f)
+        else Color.White.copy(alpha = 0.7f),
         label = ""
     )
-    IconButton(
-        onClick = {onFavoriteClick(!isFavorite)},
-        modifier=modifier
-            .background(bgColor,CircleShape)
-        ) {
+
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .background(bgColor, CircleShape)
+            .clickable { onFavoriteClick(!isFavorite) },
+        contentAlignment = Alignment.Center
+    ) {
         Icon(
-            imageVector =  if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
             contentDescription = "Favorite",
-            tint = if(isFavorite) Color.Red else Color.Gray,
-            modifier = modifier
+            tint = if (isFavorite) Color.Red else Color.Black,
+            modifier = Modifier.size(22.dp)
         )
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 fun Preview() {

@@ -1,5 +1,6 @@
 package com.example.mealplanner.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,27 +22,61 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.mealplanner.R
 import com.example.mealplanner.navigation.NavigationItem
 import com.example.mealplanner.ui.components.CustomButton
 import com.example.mealplanner.ui.components.CustomTextField
 import com.example.mealplanner.ui.components.SocialButton
+import com.example.mealplanner.ui.viewmodel.AuthState
+import com.example.mealplanner.ui.viewmodel.AuthViewModel
+import com.google.firebase.Firebase
+import com.google.firebase.auth.UserProfileChangeRequest
+import com.google.firebase.auth.auth
+
 
 @Composable
-fun SignUpScreen(navController:NavController) {
-    val userName = remember { mutableStateOf("") }
-    val email = remember { mutableStateOf("") }
-    val password = remember { mutableStateOf("") }
+fun SignUpScreen(
+    navController:NavController,
+    viewModel: AuthViewModel= hiltViewModel()
+) {
+
+    val context= LocalContext.current
+    var state=viewModel.signUpState
+    LaunchedEffect(key1 = state) {
+        when (state) {
+            is AuthState.Success -> {
+                Toast.makeText(context, "Account Created!", Toast.LENGTH_SHORT).show()
+                navController.navigate(NavigationItem.Home.route) {
+                    popUpTo(NavigationItem.SignUp.route) {
+                        inclusive = true
+                    }
+                }
+            }
+
+            is AuthState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+            }
+
+            else -> {}
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -59,32 +94,35 @@ fun SignUpScreen(navController:NavController) {
 
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text("Sing Up", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+        Text("Sign Up", fontSize = 30.sp, fontWeight = FontWeight.Bold)
         Text("Create your new account", color = Color.Gray)
         Spacer(modifier = Modifier.height(2.dp))
         CustomTextField(
-            value = userName.value,
-            onValueChange = { userName.value = it },
+            value = viewModel.signUpUsername,
+            onValueChange = { viewModel.signUpUsername = it },
             leadinIcon = { Icon(Icons.Default.Person, contentDescription = "person") },
             label = "username"
         )
         Spacer(modifier = Modifier.height(11.dp))
         CustomTextField(
-            value = email.value,
-            onValueChange = { email.value = it },
+            value = viewModel.signUpEmail,
+            onValueChange = { viewModel.signUpEmail = it },
             leadinIcon = { Icon(Icons.Default.Email, contentDescription = "email") },
             label = "eamil"
         )
         Spacer(modifier = Modifier.height(11.dp))
         CustomTextField(
-            value = password.value,
-            onValueChange = { password.value = it },
+            value = viewModel.signUpPassword,
+            onValueChange = { viewModel.signUpPassword = it },
             leadinIcon = { Icon(Icons.Default.Lock, contentDescription = "password") },
             label = "password",
             isPassword = true
         )
         Spacer(modifier = Modifier.height(22.dp))
-        CustomButton("Sing Up", onClick = {})
+        CustomButton("Sign Up",
+            onClick = {
+                viewModel.onSignUpClick()
+            })
         Spacer(modifier = Modifier.height(24.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -92,7 +130,7 @@ fun SignUpScreen(navController:NavController) {
         ) {
             Divider(modifier = Modifier.weight(1f))
             Text(
-                text = "  Or sing up with  ",
+                text = "  Or sign up with  ",
                 color = Color.Gray,
                 fontSize = 13.sp
             )
@@ -101,8 +139,8 @@ fun SignUpScreen(navController:NavController) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            SocialButton(R.drawable.facebook)
-            SocialButton(R.drawable.google)
+            SocialButton(R.drawable.facebook, onClick = {})
+            SocialButton(R.drawable.google, onClick = {})
 
         }
         Spacer(modifier = Modifier.height(24.dp))

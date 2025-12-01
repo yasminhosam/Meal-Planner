@@ -7,7 +7,9 @@ sealed class NavigationItem(val route:String) {
     object Profile : NavigationItem("profile")
     object Search:NavigationItem("search")
     object Favorite:NavigationItem("favorite")
-    object RecipeDetails: NavigationItem("details")
+    object RecipeDetails: NavigationItem("details/{id}"){
+        fun createRoute(id:String)="details/${id}"
+    }
     object Plan:NavigationItem("Plan")
 
 }

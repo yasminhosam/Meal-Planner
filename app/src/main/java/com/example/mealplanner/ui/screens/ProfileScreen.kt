@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.mealplanner.R
+import com.example.mealplanner.navigation.NavigationItem
 import com.example.mealplanner.ui.components.ProfileRow
 import com.example.mealplanner.ui.components.ProfileSwitchRow
 
@@ -107,7 +108,11 @@ fun ProfileScreen(navController: NavController,modifier: Modifier=Modifier){
         )
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedButton(
-            onClick = {},
+            onClick = {
+                navController.navigate(NavigationItem.Login.route){
+                    popUpTo(navController.graph.id){inclusive=true}
+                }
+            },
             border = BorderStroke(1.dp, color = Color.Red),
             shape = RoundedCornerShape(50),
             modifier = Modifier

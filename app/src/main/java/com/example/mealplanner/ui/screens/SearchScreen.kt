@@ -22,12 +22,13 @@ fun SearchScreen(){
        modifier = Modifier
            .padding(8.dp)
    ) {
-       SimpleSearchBar(
-       query = searchText,
-       onQueryChange = { searchText = it },
-       active = searchActive,
-       onActiveChange = { searchActive = it },
-       modifier = Modifier
-   ) }
+//       SimpleSearchBar(
+//       query = searchText,
+//       onQueryChange = { searchText = it },
+//       active = searchActive,
+//       onActiveChange = { searchActive = it },
+//       modifier = Modifier
+//   )
+   }
 
 }

@@ -1,8 +1,6 @@
 package com.example.mealplanner.ui.screens
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,27 +11,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.ripple.rememberRipple
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -42,17 +30,29 @@ import com.example.mealplanner.navigation.NavigationItem
 import com.example.mealplanner.ui.components.MealCategories
 import com.example.mealplanner.ui.components.RecipesSection
 import com.example.mealplanner.ui.components.SimpleSearchBar
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.mealplanner.ui.viewmodel.HomeViewModel
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 
 
 @Composable
-fun HomeScreen(navController: NavController) {
+fun HomeScreen(
+    navController: NavController,
+    viewModel: HomeViewModel= hiltViewModel()
+) {
+    val categoriesState by viewModel.categories.collectAsState()
+    val mealsState by viewModel.meals.collectAsState()
 
-    var searchText by rememberSaveable { mutableStateOf("") }
-    var searchActive by rememberSaveable { mutableStateOf(false) }
+    val query by viewModel.searchQuery.collectAsState()
+    val active by viewModel.isSearchActive.collectAsState()
+    val searchResult by viewModel.filteredMeals.collectAsState()
+    val user=Firebase.auth.currentUser
+    val username=user?.displayName?:"User"
+
+    val onMealClick:(String)->Unit={id->
+        navController.navigate(NavigationItem.RecipeDetails.route)
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -79,7 +79,7 @@ fun HomeScreen(navController: NavController) {
             }
             Spacer(modifier = Modifier.weight(0.1F))
             Column {
-                Text("Hi, user", fontWeight = FontWeight.Bold)
+                Text("Hi, $username", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(2.dp))
                 Text("What are you cooking today?", color = Color.Gray)
             }
@@ -88,11 +88,15 @@ fun HomeScreen(navController: NavController) {
 
         }
         SimpleSearchBar(
-            query = searchText,
-            onQueryChange = { searchText = it },
-            active = searchActive,
-            onActiveChange = { searchActive = it },
-            modifier = Modifier
+            query = query,
+            onQueryChange = viewModel::onQueryChange,
+            active = active,
+            onActiveChange = viewModel::onActiveChange,
+            onSearch = { viewModel.searchByFirstLetter(query) },
+            searchResult = searchResult,
+            navController = navController,
+            modifier = Modifier,
+
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
@@ -101,9 +105,13 @@ fun HomeScreen(navController: NavController) {
             fontSize = 18.sp,
             modifier = Modifier.padding(4.dp)
         )
-        MealCategories()
-        Spacer(modifier = Modifier.height(10.dp))
-        RecipesSection(navController)
+        if (categoriesState != null) {
+            // It is safe to use !! here because we checked the 'if' above
+            MealCategories( categoriesState!!)}
+
+        Spacer(modifier = Modifier.height(4.dp))
+        if(mealsState !=null)
+        RecipesSection( navController,mealsState!!)
 
     }
 }

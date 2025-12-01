@@ -3,9 +3,8 @@ package com.example.mealplanner.domain.usecase
 import com.example.mealplanner.domain.repo.MealsRepo
 import javax.inject.Inject
 
-class GetMeals @Inject constructor(
+class GetMealsByArea @Inject constructor(
     private val mealsRepo: MealsRepo
 ) {
-    suspend  operator fun invoke ()=mealsRepo.getRandomMeals()
-
+    suspend operator fun invoke(area:String)=mealsRepo.getMealsByArea(area)
 }
