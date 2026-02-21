@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">Meal Planner</string>
+    <string name="app_name">Plateful</string>
+    <string name="default_web_client_id">857512697672-77c6kp80us27k032ummt307952gv93i7.apps.googleusercontent.com</string>
 </resources>

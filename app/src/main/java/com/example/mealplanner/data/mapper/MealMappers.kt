@@ -1,14 +1,17 @@
 package com.example.mealplanner.data.mapper
 
+import com.example.mealplanner.data.local.entity.FavoriteMeal
+import com.example.mealplanner.data.local.entity.PlannedMeal
 import com.example.mealplanner.data.remote.dto.MealDto
 import com.example.mealplanner.data.remote.dto.MealResponseDto
 import com.example.mealplanner.domain.entity.Meal
 import com.example.mealplanner.domain.entity.MealResponse
+import java.time.LocalDate
 
 
 fun MealResponseDto.toDomain():MealResponse{
     return MealResponse(
-        meals = this.meals.map { it.toDomain() }
+        meals = this.meals?.map { it.toDomain() }.orEmpty()
     )
 
 }
@@ -39,7 +42,7 @@ fun MealDto.toDomain():Meal {
         )
     fields.forEach { (ingredient,measure) ->
         if ( ingredient is String && !ingredient.isNullOrBlank()) {
-            ingredientsList.add((ingredient to (measure ?: "")) as Pair<String, String>)
+            ingredientsList.add((ingredient to (measure ?: "")) )
         }
     }
 
@@ -48,10 +51,53 @@ fun MealDto.toDomain():Meal {
         idMeal = idMeal,
         strMeal = strMeal,
         strMealThumb = strMealThumb,
-        strYoutube = strYoutube,
-        strInstructions = strInstructions,
-        strCategory = strCategory,
+        strYoutube = strYoutube?:"",
+        strInstructions = strInstructions?:"",
+        strCategory = strCategory?:"",
         ingredients = ingredientsList
     )
 
+}
+
+fun FavoriteMeal.toDomain():Meal{
+    return Meal(
+        idMeal = idMeal,
+        strMeal = strMeal,
+        strMealThumb = strMealThumb,
+        strCategory = "",
+        ingredients = emptyList(),
+        strInstructions = "",
+        strYoutube = "",
+    )
+}
+
+fun PlannedMeal.toDomain():Meal{
+    return Meal(
+        idMeal = idMeal,
+        strMeal = strMeal,
+        strMealThumb = strMealThumb,
+        strCategory = "",
+        ingredients = emptyList(),
+        strInstructions = "",
+        strYoutube = "",
+    )
+}
+
+fun Meal.toFavoriteEntity(userId: String):FavoriteMeal{
+    return FavoriteMeal(
+        userId=userId,
+        idMeal = idMeal,
+        strMeal = strMeal,
+        strMealThumb = strMealThumb,
+    )
+
+}
+fun Meal.toPlannedEntity(date: LocalDate,userId:String): PlannedMeal{
+    return PlannedMeal(
+        userId=userId,
+        idMeal = idMeal,
+        plannedDate = date,
+        strMeal = strMeal,
+        strMealThumb = strMealThumb,
+    )
 }

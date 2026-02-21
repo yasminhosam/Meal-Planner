@@ -22,12 +22,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Liquor
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,6 +47,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,17 +55,27 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.mealplanner.domain.entity.Meal
 import com.example.mealplanner.ui.components.FavoriteButton
+import com.example.mealplanner.ui.components.WeekPickerDialog
+import com.example.mealplanner.ui.theme.FavoriteColor
 import com.example.mealplanner.ui.viewmodel.DetailsUiState
 import com.example.mealplanner.ui.viewmodel.DetailsViewModel
+import com.example.mealplanner.ui.viewmodel.FavoriteViewModel
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
+import java.time.LocalDate
 
 @Composable
 fun MealDetailsScreen(
     navController: NavController,
-    viewModel: DetailsViewModel = hiltViewModel()) {
+    viewModel: DetailsViewModel = hiltViewModel(),
+    favoriteViewModel: FavoriteViewModel= hiltViewModel(),
+
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val favoriteIds =favoriteViewModel.favoriteMealIds.collectAsStateWithLifecycle()
+
 
     when (state) {
         is DetailsUiState.Loading -> {
@@ -81,8 +89,16 @@ fun MealDetailsScreen(
 
         is DetailsUiState.Success -> {
             val meal = (state as DetailsUiState.Success).meal
-            MealDetailsContent(navController,meal)
+            val isFavorite = favoriteIds.value.contains(meal.idMeal)
 
+            MealDetailsContent(
+                navController = navController,
+                meal = meal,
+                isFav = isFavorite,
+                onFavoriteClick = { favoriteViewModel.onFavoriteClick(meal.idMeal) },
+                onPlanClick = viewModel::onPlanClick,
+                isPlanned = viewModel.isPlanned.collectAsStateWithLifecycle().value
+            )
         }
 
         is DetailsUiState.Error -> {
@@ -96,9 +112,38 @@ fun MealDetailsScreen(
 }
 
 @Composable
-fun MealDetailsContent(navController: NavController,meal: Meal) {
+fun MealDetailsContent(
+    navController: NavController,
+    meal: Meal,
+    isFav:Boolean,
+    onFavoriteClick:(String)->Unit,
+    onPlanClick:(Meal,LocalDate)->Unit,
+    isPlanned:Boolean,
+) {
     var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
     val tabTitles = listOf("INGREDIENTS", "INSTRUCTIONS", "TUTORIAL")
+
+    var showWeekPicker by rememberSaveable { mutableStateOf(false) }
+    var selectedDate by rememberSaveable {
+        mutableStateOf(LocalDate.now())
+    }
+
+
+    if (showWeekPicker) {
+        Dialog(onDismissRequest = { showWeekPicker = false }) {
+            WeekPickerDialog(
+                selectedDate = selectedDate,
+                onDateSelected = { date ->
+                    selectedDate = date
+                    onPlanClick(meal,date)
+                    showWeekPicker = false
+
+                },
+                onDismiss = { showWeekPicker = false }
+            )
+        }
+    }
+
 
     Box(
         modifier = Modifier
@@ -145,11 +190,10 @@ fun MealDetailsContent(navController: NavController,meal: Meal) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.Black)
             }
 
-            var isFav by rememberSaveable { mutableStateOf(false) }
+
             FavoriteButton(
                 isFavorite = isFav,
-                onFavoriteClick = { isFav = it },
-                //backgroundEnabled = true
+                onFavoriteClick ={onFavoriteClick(meal.idMeal)},
             )
 
         }
@@ -172,12 +216,25 @@ fun MealDetailsContent(navController: NavController,meal: Meal) {
                     style = MaterialTheme.typography.titleMedium
                 )
                 IconButton(
-                    onClick = { },
+                    onClick = { showWeekPicker= true},
                     modifier = Modifier
                         .background(Color.White.copy(0.7f), CircleShape)
                         .size(40.dp)
                 ) {
-                    Icon(Icons.Default.CalendarToday, contentDescription = "Back", tint = Color.Black)
+                    Icon(
+                        imageVector =
+                        if (isPlanned)
+                            Icons.Filled.CalendarToday
+                        else
+                            Icons.Outlined.CalendarToday,
+                        contentDescription = "Plan",
+                        tint =
+                        if (isPlanned)
+                            FavoriteColor
+                        else
+                            Color.Black,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
 
             }
@@ -210,18 +267,6 @@ fun MealDetailsContent(navController: NavController,meal: Meal) {
             }
 
         }
-
-//        Button(
-//            onClick = {},
-//            modifier = Modifier
-//                .align(Alignment.BottomCenter)
-//                .padding(60.dp),
-//            colors = ButtonDefaults.buttonColors(Color(0xFFD7623E)),
-//            shape = RoundedCornerShape(23.dp)
-//
-//        ) {
-//            Text("Add to plan", fontSize = 21.sp)
-//        }
     }
 
 }
@@ -230,10 +275,7 @@ fun MealDetailsContent(navController: NavController,meal: Meal) {
 @Composable
 fun TutorialContent(strYoutube: String) {
     val videoId=strYoutube.substringAfter("v=","")
-    LaunchedEffect(videoId) {
-        Log.d("YouTubeDebug", "Original URL: $strYoutube")
-        Log.d("YouTubeDebug", "Extracted ID: $videoId")
-    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -340,28 +382,6 @@ fun InstructionsContent(strInstructions: String) {
 
 }
 
-
-////  Data Model for an Ingredient
-//data class Ingredient(
-//    val name: String,
-//    val quantity: String,
-//    val icon: ImageVector
-//)
-//
-////  Dummy data to show in our list
-//
-//val dummyIngredientList =
-//    listOf(
-//        Ingredient("Pickle Juice", "1/4 cup", Icons.Default.Liquor),
-//        Ingredient("Egg", "1", Icons.Default.Egg),
-//        Ingredient("Milk", "1/4 cup", Icons.Default.Liquor),
-//        Ingredient("Flour", "1/2 cup", Icons.Default.Fastfood),
-//        Ingredient("Icing Sugar", "1 tbs", Icons.Default.Icecream),
-//        Ingredient("Chicken Breast", "2 large", Icons.Default.Fastfood),
-//        Ingredient("Peanut Oil", "3 cups", Icons.Default.Liquor),
-//        Ingredient("Buns", "2", Icons.Default.Fastfood)
-//    )
-
 @Composable
 fun IngredientsContent(ingredients: List<Pair<String, String>>) {
     LazyColumn(
@@ -375,27 +395,32 @@ fun IngredientsContent(ingredients: List<Pair<String, String>>) {
     }
 }
 
+
+
+
 @Composable
-fun IngredientItem(ingredient: Pair<String, String>) {
+fun IngredientItem(ingredient: Pair<String, String>,viewModel: DetailsViewModel= hiltViewModel()) {
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp)
     ) {
-        Icon(
-            imageVector = Icons.Default.Cake,
+        AsyncImage(
+            model = viewModel.getIngredientImageUrl(ingredient.first),
             contentDescription = ingredient.first,
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
 
         )
-        Spacer(modifier = Modifier.width(19.dp))
+
+        Spacer(modifier = Modifier.width(16.dp))
 
         Text(
             text = ingredient.first,
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f).padding(4.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(
@@ -403,10 +428,4 @@ fun IngredientItem(ingredient: Pair<String, String>) {
             style = MaterialTheme.typography.bodySmall
         )
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewRecipeDetailsScreen() {
-
 }

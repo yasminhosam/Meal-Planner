@@ -47,6 +47,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +69,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -75,44 +77,55 @@ import com.example.mealplanner.domain.entity.CategoryResponse
 import com.example.mealplanner.domain.entity.Meal
 import com.example.mealplanner.domain.entity.MealResponse
 import com.example.mealplanner.navigation.NavigationItem
+import com.example.mealplanner.ui.screens.SwipeToDeleteContainer
+import com.example.mealplanner.ui.theme.FavoriteColor
+import com.example.mealplanner.ui.viewmodel.FavoriteViewModel
 
 
 @Composable
 fun CustomTextField(
-    value:String,
-    onValueChange:(String)->Unit,
-    leadinIcon: @Composable (()->Unit),
-    label:String,
-    isPassword:Boolean=false
-){
+    value: String,
+    onValueChange: (String) -> Unit,
+    leadingIcon: @Composable (() -> Unit),
+    label: String,
+    isPassword: Boolean = false,
+    isError: Boolean,
+    errorText: String?
+) {
     var passwordVisible by remember { mutableStateOf(false) }
-    OutlinedTextField(value = value, onValueChange = onValueChange,
-        leadingIcon = leadinIcon,
-        label = { Text(label, color = Color(0xFFFF9800)) },
+    OutlinedTextField(
+        value = value, onValueChange = onValueChange,
+        leadingIcon = leadingIcon,
+        label = { Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        isError = isError,
+        supportingText = {
+            if (errorText != null)
+                Text(text = errorText, color = MaterialTheme.colorScheme.error)
+        },
         modifier = Modifier.fillMaxWidth(),
         visualTransformation =
-            if(isPassword && !passwordVisible)
-                PasswordVisualTransformation()
-            else
-                VisualTransformation.None
-          ,
+        if (isPassword && !passwordVisible)
+            PasswordVisualTransformation()
+        else
+            VisualTransformation.None,
         trailingIcon = {
-            if (isPassword){
-                val icon =if(passwordVisible)  Icons.Default.Visibility
+            if (isPassword) {
+                val icon = if (passwordVisible) Icons.Default.Visibility
                 else Icons.Default.VisibilityOff
 
 
-                IconButton(onClick = {passwordVisible=!passwordVisible}) {
-                    Icon(imageVector = icon, contentDescription ="Toggle password visibility" )
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(imageVector = icon, contentDescription = "Toggle password visibility")
                 }
             }
         },
         shape = RoundedCornerShape(16.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFFFF9800),
-            unfocusedBorderColor = Color(0xFFFFB74D),
-            cursorColor = Color(0xFFFF9800)
-        )
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            cursorColor = MaterialTheme.colorScheme.primary,
+
+            )
     )
 }
 
@@ -120,20 +133,21 @@ fun CustomTextField(
 @Composable
 fun CustomButton(
     text: String,
-    onClick: () -> Unit
-){
+    onClick: () -> Unit,
+    isEnabled: Boolean = false
+) {
     Button(
         onClick = onClick,
-        colors = ButtonDefaults.buttonColors(Color(0xFFFF6F00)),
+        enabled = isEnabled,
+        colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary),
         shape = RoundedCornerShape(24.dp),
         modifier = Modifier
             .fillMaxWidth()
             .height(55.dp)
     ) {
-        Text(text, color = Color.White, fontSize = 18.sp)
+        Text(text, color = MaterialTheme.colorScheme.onPrimary, fontSize = 18.sp)
     }
 }
-
 
 
 @Composable
@@ -162,21 +176,20 @@ fun SocialButton(
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SimpleSearchBar(
-    query:String,
-    onQueryChange:(String)->Unit,
-    active:Boolean,
-    onActiveChange:(Boolean) -> Unit,
-    onSearch:()->Unit,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    active: Boolean,
+    onActiveChange: (Boolean) -> Unit,
+    onSearch: () -> Unit,
     searchResult: MealResponse?,
     navController: NavController,
-    modifier: Modifier = Modifier
 ) {
 
 
     SearchBar(
         modifier = Modifier.fillMaxWidth(),
         query = query,
-        onQueryChange =onQueryChange,
+        onQueryChange = onQueryChange,
         onSearch = {
             onSearch()
         },
@@ -206,12 +219,16 @@ fun SimpleSearchBar(
 
         content = {
             if (!searchResult?.meals.isNullOrEmpty()) {
-                RecipesSection( navController,searchResult!!)
+                RecipesSection(navController, searchResult!!)
             } else if (query.isEmpty()) {
-                Text("Type something to search your recipes", modifier = Modifier.padding(16.dp), color = Color.Gray)
-            }else{
                 Text(
-                    text = "No meals found",
+                    "Type something to search your recipes",
+                    modifier = Modifier.padding(16.dp),
+                    color = Color.Gray
+                )
+            } else {
+                Text(
+                    text = "No recipes found for your search",
                     modifier = Modifier.padding(16.dp)
                 )
 
@@ -222,7 +239,10 @@ fun SimpleSearchBar(
 }
 
 @Composable
-fun MealCategories(response:CategoryResponse) {
+fun MealCategories(
+    response: CategoryResponse,
+    onCategoryClick: (String) -> Unit
+) {
     LazyRow(
         modifier = Modifier
             .padding(4.dp)
@@ -230,54 +250,91 @@ fun MealCategories(response:CategoryResponse) {
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(response.categories) { category ->
-            Surface(
-                modifier = Modifier,
-                shape = CircleShape,
-
-                ) {
-                Column(
-                    modifier = Modifier
-                        .padding(4.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    AsyncImage(
-                        model = category.strCategoryThumb ,
-                        contentDescription = category.strCategoryDescription,
-                        modifier = Modifier.size(70.dp)
-                    )
-                    Text(category.strCategory)
-                }
+            Column(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .clickable { onCategoryClick(category.strCategory) }
+                    .padding(4.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                AsyncImage(
+                    model = category.strCategoryThumb,
+                    contentDescription = category.strCategoryDescription,
+                    modifier = Modifier.size(70.dp)
+                )
+                Text(category.strCategory)
             }
-
         }
+
     }
+}
+
+@Composable
+fun ConnectedRecipeCard(
+    meal: Meal,
+    navController: NavController,
+    favoriteViewModel: FavoriteViewModel = hiltViewModel()
+) {
+    // Observe the list of favorite IDs globally
+    val favoriteIds by favoriteViewModel.favoriteMealIds.collectAsState()
+    val isFavorite = favoriteIds.contains(meal.idMeal)
+
+
+    RecipeCard(
+        meal = meal,
+        navController = navController,
+        isFavorite = isFavorite,
+        onFavoriteClick = { favoriteViewModel.onFavoriteClick(meal.idMeal) }
+    )
 }
 
 @Composable
 fun RecipesSection(
     navController: NavController,
-    response:MealResponse
+    response: MealResponse,
+    onDeleteMeal: ((String) -> Unit)? = null
 ) {
 
     LazyColumn(
         modifier = Modifier
             .padding(8.dp), verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        items(response.meals) { meal ->
-            RecipeCard(meal, navController =navController )
+        items(response.meals, key = { it.idMeal }) { meal ->
+            if (onDeleteMeal != null) {
+                SwipeToDeleteContainer(
+                    key = meal.idMeal,
+                    onDelete = { onDeleteMeal(meal.idMeal) }
+                ) {
+                    ConnectedRecipeCard(
+                        meal = meal,
+                        navController = navController,
+                    )
+
+                }
+            } else {
+                ConnectedRecipeCard(
+                    meal = meal,
+                    navController = navController,
+                )
 
 
             }
-
         }
+
     }
+}
 
 
 @Composable
-fun RecipeCard(meal:Meal,navController: NavController) {
+fun RecipeCard(
+    meal: Meal,
+    navController: NavController,
+    isFavorite: Boolean,
+    onFavoriteClick: (String) -> Unit
+) {
     Card(
-        onClick = {navController.navigate(NavigationItem.RecipeDetails.createRoute(meal.idMeal))},
+        onClick = { navController.navigate(NavigationItem.RecipeDetails.createRoute(meal.idMeal)) },
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -291,7 +348,7 @@ fun RecipeCard(meal:Meal,navController: NavController) {
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            // 2. Gradient Scrim for readability of text
+            //  Gradient Scrim for readability  of text
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -307,13 +364,14 @@ fun RecipeCard(meal:Meal,navController: NavController) {
                     .fillMaxSize()
                     .padding(11.dp)
             ) {
-                var isFav by rememberSaveable { mutableStateOf(false) }
+
                 FavoriteButton(
-                    isFav,
-                    onFavoriteClick = {isFav=it},
+                    isFavorite = isFavorite,
+                    onFavoriteClick = { onFavoriteClick(meal.idMeal) },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp))
+                        .padding(8.dp)
+                )
                 Text(
                     text = meal.strMeal,
                     color = Color.White,
@@ -329,27 +387,32 @@ fun RecipeCard(meal:Meal,navController: NavController) {
 
 @Composable
 fun ProfileRow(
-    icon:ImageVector,
-    text:String,
-    trailing:@Composable (()->Unit)?=null,
-    onClick:()->Unit={},
-){
+    icon: ImageVector,
+    text: String,
+    trailing: @Composable (() -> Unit)? = null,
+    onClick: () -> Unit = {},
+) {
     Card(
-        onClick=onClick,
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .padding(6.dp),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(2.dp),
-        colors = CardDefaults.cardColors(Color.White)
+        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = Color.Black)
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text, modifier = Modifier.weight(1f), fontSize = 16.sp)
+            Text(
+                text,
+                modifier = Modifier.weight(1f),
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             trailing?.invoke()
         }
     }
@@ -358,29 +421,36 @@ fun ProfileRow(
 @Composable
 fun ProfileSwitchRow(
     icon: ImageVector,
-    text: String
-){
-    var checked by rememberSaveable { mutableStateOf(false) }
-    Card(modifier = Modifier
-        .fillMaxWidth()
-        .padding(6.dp),
+    text: String,
+    checked: Boolean = false,
+    onCheckedChange: (Boolean) -> Unit = {}
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(6.dp),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(2.dp),
-        colors = CardDefaults.cardColors(Color.White)
+        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = Color.Black)
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text, modifier = Modifier.weight(1f), fontSize = 16.sp)
-           Switch(
-               checked =checked,
-               onCheckedChange = {checked=it},
-               modifier =Modifier.scale(0.6f)
+            Text(
+                text,
+                modifier = Modifier.weight(1f),
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                modifier = Modifier.scale(0.6f)
 
-               )
+            )
         }
     }
 }
@@ -408,7 +478,7 @@ fun FavoriteButton(
         Icon(
             imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
             contentDescription = "Favorite",
-            tint = if (isFavorite) Color.Red else Color.Black,
+            tint = if (isFavorite) FavoriteColor else Color.Black,
             modifier = Modifier.size(22.dp)
         )
     }
@@ -417,6 +487,6 @@ fun FavoriteButton(
 @Preview(showBackground = true)
 @Composable
 fun Preview() {
-   // RecipeCard()
+    // RecipeCard()
 
 }

@@ -53,6 +53,10 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.firebase.auth)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.play.services.auth)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -82,8 +86,20 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.51.1")
     ksp("com.google.dagger:hilt-android-compiler:2.51.1")
     implementation ("androidx.hilt:hilt-navigation-compose:1.1.0")
+
+    //coil
     implementation ("io.coil-kt:coil-compose:2.4.0")
 
     implementation ("com.pierfrancescosoffritti.androidyoutubeplayer:core:13.0.0")
+    // Room
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+
+    // Annotation processor
+    ksp(libs.room.compiler)
+
+
+        implementation("androidx.datastore:datastore-preferences:1.1.1")
+    
 
 }

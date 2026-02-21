@@ -1,17 +1,32 @@
 package com.example.mealplanner.data.repo
 
+import com.example.mealplanner.data.local.dao.FavoriteMealDao
+import com.example.mealplanner.data.local.dao.PlannedMealDao
 import com.example.mealplanner.data.mapper.toDomain
+import com.example.mealplanner.data.mapper.toFavoriteEntity
+import com.example.mealplanner.data.mapper.toPlannedEntity
 import com.example.mealplanner.data.remote.ApiService
 import com.example.mealplanner.domain.entity.CategoryResponse
 import com.example.mealplanner.domain.entity.Meal
 import com.example.mealplanner.domain.entity.MealResponse
 import com.example.mealplanner.domain.repo.MealsRepo
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import java.time.LocalDate
 import javax.inject.Inject
 
 class MealsRepoImpl @Inject constructor(
-    private val api:ApiService
+    private val auth:FirebaseAuth,
+    private val api:ApiService,
+    private val favoriteDao: FavoriteMealDao,
+    private val plannedMealsDao: PlannedMealDao
 ):MealsRepo {
 
+
+    override suspend fun getMealsByName(name:String): MealResponse {
+        return api.getMealsByName(name).toDomain()
+    }
 
     override suspend fun getCategories(): CategoryResponse {
         return api.getCategories()
@@ -41,7 +56,8 @@ class MealsRepoImpl @Inject constructor(
         if(!response.meals.isNullOrEmpty()){
             return response.meals.first().toDomain()
         }else{
-            throw Exception("Meal not found")
+            throw NoSuchElementException("Meal not found")
+
         }
     }
 
@@ -49,5 +65,49 @@ class MealsRepoImpl @Inject constructor(
         return api.getMealsByFirstLetter(letter).toDomain()
     }
 
+    private fun requireUserId(): String {
+        return auth.currentUser?.uid
+            ?: throw IllegalStateException("User not logged in")
+    }
+
+    override  fun getAllFavoriteMeals(): Flow<List<Meal>> {
+        return favoriteDao.getAllFavoriteMeals(requireUserId()).map { entities->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override  fun getPlannedMealsByDate(date: LocalDate): Flow<List<Meal>> {
+        return plannedMealsDao.getMealsByDate(date, requireUserId()).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getAllPlannedMeals(): Flow<List<Meal>> {
+        return plannedMealsDao.getAllPlannedMeals(requireUserId()).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun toggleFavorite(meal: Meal) {
+
+        if(favoriteDao.isFavorite(meal.idMeal,requireUserId())){
+            favoriteDao.deleteFavoriteMeal(meal.toFavoriteEntity(requireUserId()))
+            return
+        }else {
+            favoriteDao.insertFavoriteMeal(
+                meal.toFavoriteEntity(
+                    userId = requireUserId()
+                )
+            )
+        }
+    }
+
+    override suspend fun insertPlannedMeal(meal: Meal,date: LocalDate) {
+        plannedMealsDao.insertPlannedMeal(meal.toPlannedEntity(date,requireUserId()))
+    }
+
+    override suspend fun deletePlannedMeal(mealId: String, date: LocalDate) {
+        plannedMealsDao.deletePlannedMeal(mealId,requireUserId(),date)
+    }
 
 }

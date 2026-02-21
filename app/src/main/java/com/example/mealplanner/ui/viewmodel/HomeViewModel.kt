@@ -7,10 +7,16 @@ import com.example.mealplanner.domain.entity.CategoryResponse
 import com.example.mealplanner.domain.entity.MealResponse
 import com.example.mealplanner.domain.usecase.GetCategories
 import com.example.mealplanner.domain.usecase.GetMeals
-import com.example.mealplanner.domain.usecase.GetMealsByFirstLetter
+import com.example.mealplanner.domain.usecase.GetMealsByName
+import com.example.mealplanner.data.local.UserPreference
+import com.example.mealplanner.data.local.UserRepository
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,14 +25,45 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val getMeals: GetMeals,
     private val getCategories: GetCategories,
-    private val getMealsByFirstLetter: GetMealsByFirstLetter,
+    private val getMealsByName: GetMealsByName,
+    private val userRepository: UserRepository,
+    private val preference: UserPreference,
+    private val auth: FirebaseAuth,
 
-) : ViewModel() {
+
+    ) : ViewModel() {
+    val userId get() = auth.currentUser?.uid
+    private val _username=MutableStateFlow("")
+    val username:StateFlow<String> = _username
+
+    val profileImage=userRepository.userProfileImage
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
     private val _searchQuery=MutableStateFlow("")
     val searchQuery=_searchQuery.asStateFlow()
 
     private val _isSearchActive=MutableStateFlow(false)
     val isSearchActive=_isSearchActive.asStateFlow()
+    private val _categories = MutableStateFlow<CategoryResponse?>(null)
+
+    val categories= _categories.asStateFlow()
+    private val _meals=MutableStateFlow<MealResponse?>(null)
+    val meals = _meals.asStateFlow()
+
+    private val _filteredMeals=MutableStateFlow<MealResponse?>(null)
+    val filteredMeals = _filteredMeals.asStateFlow()
+
+    init {
+        syncUserNameFromFirebase()
+        observeUserName()
+        loadCategories()
+        loadMeals()
+
+    }
     fun  onQueryChange(newQuery:String){
         _searchQuery.value=newQuery
     }
@@ -37,12 +74,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private val _filteredMeals=MutableStateFlow<MealResponse?>(null)
-    val filteredMeals = _filteredMeals.asStateFlow()
-   fun searchByFirstLetter(letter:String){
+   fun searchByFName(name:String){
         viewModelScope.launch {
             try {
-                _filteredMeals.value = getMealsByFirstLetter(letter.first().toString())
+                _filteredMeals.value = getMealsByName(name)
 
             } catch (e: Exception) {
                 Log.d("homeViewModel", e.message.toString())
@@ -50,8 +85,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private val _categories = MutableStateFlow<CategoryResponse?>(null)
-    val categories= _categories.asStateFlow()
 
     fun loadCategories() {
         viewModelScope.launch {
@@ -65,8 +98,6 @@ class HomeViewModel @Inject constructor(
 
 
 
-    private val _meals=MutableStateFlow<MealResponse?>(null)
-    val meals = _meals.asStateFlow()
     fun loadMeals(){
         viewModelScope.launch {
             try {
@@ -76,22 +107,26 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
-    init {
-        loadCategories()
-        loadMeals()
+    private fun observeUserName() {
+        val uid = auth.currentUser?.uid ?: return
 
+        viewModelScope.launch {
+            preference.userName(uid).collect { name ->
+                Log.d("HomeViewModel", "User name from DataStore = $name")
+                if (name != null) {
+                    _username.value = name
+                }
+            }
+        }
     }
-//
-//    private val _meal=MutableStateFlow<Meal?>(null)
-//    val meal=_meal.asStateFlow()
-//    fun findMealById(id:String){
-//        viewModelScope.launch {
-//            try {
-//                _meal.value=getMealDetails(id)
-//            }catch (e: Exception) {
-//                Log.d("homeViewModel", e.message.toString())
-//            }
-//        }
 
+    private fun syncUserNameFromFirebase(){
+        val user = auth.currentUser ?: return
+        val name = user.displayName ?: return
+        viewModelScope.launch {
+            preference.saveUserName(user.uid,name)
+            Log.d("HomeViewModel", "Saved name to DataStore: $name")
+        }
+    }
 
 }
