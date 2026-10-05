@@ -99,7 +99,14 @@ dependencies {
     ksp(libs.room.compiler)
 
 
-        implementation("androidx.datastore:datastore-preferences:1.1.1")
-    
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
 
+
+    testImplementation("io.mockk:mockk:1.13.11")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    testImplementation("app.cash.turbine:turbine:1.1.0")
+
+    androidTestImplementation("androidx.room:room-testing:2.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation(kotlin("test"))
 }
